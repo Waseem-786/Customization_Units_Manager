@@ -27,6 +27,13 @@ export interface ChangeDetail {
   fileCount: number;
 }
 
+export type DetectedItemKind = 'folder' | 'file';
+
+export interface DetectedItem {
+  name: string;
+  kind: DetectedItemKind;
+}
+
 export interface CustomizationDetail {
   name: string;
   rawPath: string;
@@ -35,9 +42,10 @@ export interface CustomizationDetail {
   changes: ChangeDetail[];
   hasUnstructuredLayout: boolean;
   topLevelFolders: string[];
-  detectedFolders: string[];
+  detectedItems: DetectedItem[];
   mapping: MappingConfig;
   mappingExists: boolean;
+  unmappedItems: string[];
 }
 
 export interface CreateChangeResult {
@@ -45,11 +53,21 @@ export interface CreateChangeResult {
   path: string;
 }
 
+export const IGNORE_DESTINATION = 'IGNORE';
+
+/** Backward-compat: legacy v1 only knew these three roles. Kept for type aliasing in the renderer. */
 export type FolderRole = 'APP_UNITS' | 'DB_UNITS' | 'IGNORE';
 
+export interface MappingEntry {
+  kind: DetectedItemKind;
+  /** A bucket name from MappingConfig.buckets, or the special string 'IGNORE'. */
+  destination: string;
+}
+
 export interface MappingConfig {
-  version: 1;
-  folders: Record<string, FolderRole>;
+  version: 2;
+  buckets: string[];
+  entries: Record<string, MappingEntry>;
 }
 
 export type PrepareItemAction = 'create' | 'unchanged' | 'conflict';
@@ -58,7 +76,8 @@ export interface PreparePlanItem {
   source: string;
   destination: string;
   relativePath: string;
-  role: Exclude<FolderRole, 'IGNORE'>;
+  /** Destination bucket name (e.g. APP_UNITS, DB_UNITS, or any user-defined bucket). */
+  role: string;
   action: PrepareItemAction;
   isBinary: boolean;
   sourceSize: number;
@@ -95,7 +114,8 @@ export interface PreparedFile {
   source: string;
   destination: string;
   relativePath: string;
-  role: Exclude<FolderRole, 'IGNORE'>;
+  /** Destination bucket name. */
+  role: string;
   action: AppliedAction;
 }
 

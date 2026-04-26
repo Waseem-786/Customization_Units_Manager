@@ -6,6 +6,7 @@ import type {
   CreateChangeResult,
   CustomizationDetail,
   CustomizationSummary,
+  DetectedItem,
   FileNode
 } from '../shared/types';
 import { MAPPING_FILENAME, loadMapping, mergeMapping } from './mapping';
@@ -27,6 +28,21 @@ async function listSubdirs(p: string): Promise<string[]> {
   try {
     const entries = await fs.readdir(p, { withFileTypes: true });
     return entries.filter((e) => e.isDirectory()).map((e) => e.name);
+  } catch {
+    return [];
+  }
+}
+
+async function listTopLevelEntries(p: string): Promise<DetectedItem[]> {
+  try {
+    const entries = await fs.readdir(p, { withFileTypes: true });
+    const items: DetectedItem[] = [];
+    for (const e of entries) {
+      if (e.name === MAPPING_FILENAME) continue;
+      if (e.isDirectory()) items.push({ name: e.name, kind: 'folder' });
+      else if (e.isFile()) items.push({ name: e.name, kind: 'file' });
+    }
+    return items;
   } catch {
     return [];
   }
@@ -135,16 +151,32 @@ export async function getCustomizationDetail(
   const finalPath = settings.finalRoot ? path.join(settings.finalRoot, name) : null;
   const hasFinal = finalPath ? await dirExists(finalPath) : false;
 
-  const detectedSet = new Set<string>();
+  const detectedMap = new Map<string, DetectedItem>();
   for (const c of changeDirs) {
     const cPath = path.join(rawPath, c);
-    const subs = await listSubdirs(cPath);
-    for (const s of subs) detectedSet.add(s);
+    const items = await listTopLevelEntries(cPath);
+    for (const item of items) {
+      if (!detectedMap.has(item.name)) detectedMap.set(item.name, item);
+    }
   }
-  const detectedFolders = Array.from(detectedSet).sort((a, b) => a.localeCompare(b));
+  const detectedItems = Array.from(detectedMap.values()).sort((a, b) => {
+    if (a.kind !== b.kind) return a.kind === 'folder' ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
 
   const { config: savedMapping, exists: mappingExists } = await loadMapping(rawPath);
-  const mapping = mergeMapping(savedMapping, detectedFolders);
+  const mapping = mergeMapping(savedMapping, detectedItems);
+
+  // An item is "unmapped" if the saved mapping exists but doesn't have an entry for it.
+  // (Suggestions only count once explicitly saved.)
+  const unmappedItems: string[] = [];
+  if (mappingExists && savedMapping) {
+    for (const item of detectedItems) {
+      if (!savedMapping.entries[item.name]) unmappedItems.push(item.name);
+    }
+  } else {
+    for (const item of detectedItems) unmappedItems.push(item.name);
+  }
 
   return {
     name,
@@ -154,9 +186,10 @@ export async function getCustomizationDetail(
     changes,
     hasUnstructuredLayout: changeDirs.length === 0 && nonChangeDirs.length > 0,
     topLevelFolders: nonChangeDirs,
-    detectedFolders,
+    detectedItems,
     mapping,
-    mappingExists
+    mappingExists,
+    unmappedItems
   };
 }
 

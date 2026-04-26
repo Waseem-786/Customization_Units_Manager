@@ -4,13 +4,15 @@ import type {
   AppSettings,
   AppliedAction,
   ConflictResolutions,
-  FolderRole,
+  DetectedItem,
+  MappingConfig,
   PreparedFile,
   PreparePlan,
   PreparePlanItem,
   PrepareResult
 } from '../shared/types';
-import { loadMapping, mergeMapping } from './mapping';
+import { IGNORE_DESTINATION } from '../shared/types';
+import { MAPPING_FILENAME, loadMapping } from './mapping';
 import { generateDeploymentScript } from './deploymentScript';
 
 async function dirExists(p: string): Promise<boolean> {
@@ -22,9 +24,15 @@ async function dirExists(p: string): Promise<boolean> {
   }
 }
 
-async function listSubdirs(p: string): Promise<string[]> {
+async function listTopLevelEntries(p: string): Promise<DetectedItem[]> {
   const entries = await fs.readdir(p, { withFileTypes: true });
-  return entries.filter((e) => e.isDirectory()).map((e) => e.name);
+  const items: DetectedItem[] = [];
+  for (const e of entries) {
+    if (e.name === MAPPING_FILENAME) continue;
+    if (e.isDirectory()) items.push({ name: e.name, kind: 'folder' });
+    else if (e.isFile()) items.push({ name: e.name, kind: 'file' });
+  }
+  return items;
 }
 
 async function fileBytesEqual(a: string, b: string): Promise<boolean> {
@@ -64,17 +72,41 @@ async function safeStatSize(p: string): Promise<number | null> {
   }
 }
 
-interface WalkContext {
-  changePath: string;
-  finalPath: string;
-  role: Exclude<FolderRole, 'IGNORE'>;
-  folder: string;
+async function classifyFile(
+  source: string,
+  destination: string,
+  bucket: string,
+  relativePath: string,
+  items: PreparePlanItem[]
+): Promise<void> {
+  const destSize = await safeStatSize(destination);
+  const sourceSize = (await safeStatSize(source)) ?? 0;
+
+  let action: PreparePlanItem['action'];
+  if (destSize === null) action = 'create';
+  else if (await fileBytesEqual(source, destination)) action = 'unchanged';
+  else action = 'conflict';
+
+  const isBinary =
+    action === 'conflict' ? (await isBinaryFile(source)) || (await isBinaryFile(destination)) : false;
+
+  items.push({
+    source,
+    destination,
+    relativePath,
+    role: bucket,
+    action,
+    isBinary,
+    sourceSize,
+    destSize
+  });
 }
 
-async function walkAndPlan(
-  ctx: WalkContext,
+async function walkAndPlanFolder(
   srcDir: string,
   destDir: string,
+  bucket: string,
+  prefix: string,
   items: PreparePlanItem[]
 ): Promise<void> {
   const entries = await fs.readdir(srcDir, { withFileTypes: true });
@@ -82,36 +114,26 @@ async function walkAndPlan(
     const srcPath = path.join(srcDir, entry.name);
     const destPath = path.join(destDir, entry.name);
     if (entry.isDirectory()) {
-      await walkAndPlan(ctx, srcPath, destPath, items);
+      const nextPrefix = prefix + '/' + entry.name;
+      await walkAndPlanFolder(srcPath, destPath, bucket, nextPrefix, items);
     } else if (entry.isFile()) {
-      const destSize = await safeStatSize(destPath);
-      const sourceSize = (await safeStatSize(srcPath)) ?? 0;
-      const relPathInChange = path.relative(ctx.changePath, srcPath).replace(/\\/g, '/');
-      const relativePath = `${ctx.role}/${relPathInChange}`;
-
-      let action: PreparePlanItem['action'];
-      if (destSize === null) {
-        action = 'create';
-      } else if (await fileBytesEqual(srcPath, destPath)) {
-        action = 'unchanged';
-      } else {
-        action = 'conflict';
-      }
-
-      const isBinary =
-        action === 'conflict' ? (await isBinaryFile(srcPath)) || (await isBinaryFile(destPath)) : false;
-
-      items.push({
-        source: srcPath,
-        destination: destPath,
-        relativePath,
-        role: ctx.role,
-        action,
-        isBinary,
-        sourceSize,
-        destSize
-      });
+      const rel = `${bucket}${prefix}/${entry.name}`;
+      await classifyFile(srcPath, destPath, bucket, rel, items);
     }
+  }
+}
+
+export interface MappingValidationError {
+  reason: 'no-mapping-file' | 'unmapped-items';
+  unmapped?: string[];
+}
+
+class PrepareValidationError extends Error {
+  details: MappingValidationError;
+  constructor(details: MappingValidationError, message: string) {
+    super(message);
+    this.name = 'PrepareValidationError';
+    this.details = details;
   }
 }
 
@@ -132,28 +154,50 @@ export async function planPrepareChange(
     throw new Error(`Change folder not found: ${changePath}`);
   }
 
-  const sourceFolders = await listSubdirs(changePath);
-  const { config } = await loadMapping(customRawPath);
-  const mapping = mergeMapping(config, sourceFolders);
+  const detectedItems = await listTopLevelEntries(changePath);
+  const { config, exists: mappingExists } = await loadMapping(customRawPath);
+
+  if (!mappingExists || !config) {
+    throw new PrepareValidationError(
+      { reason: 'no-mapping-file' },
+      `Folder mapping is not configured for "${customizationName}". Open the customization, set a destination for each item, and click Save mapping before preparing.`
+    );
+  }
+
+  const unmapped = detectedItems.filter((it) => !config.entries[it.name]).map((it) => it.name);
+  if (unmapped.length > 0) {
+    throw new PrepareValidationError(
+      { reason: 'unmapped-items', unmapped },
+      `These items have no destination set: ${unmapped.join(', ')}. Open the mapping panel, choose a destination (or Ignore) for each, and save before preparing.`
+    );
+  }
+
+  const mapping: MappingConfig = config;
   const finalPath = path.join(settings.finalRoot, customizationName);
 
   const items: PreparePlanItem[] = [];
   const ignoredFolders: string[] = [];
-  const unmappedFolders: string[] = [];
+  const unmappedFolders: string[] = []; // never populated under strict validation
 
-  for (const folder of sourceFolders) {
-    const role = mapping.folders[folder];
-    if (!role) {
-      unmappedFolders.push(folder);
+  for (const item of detectedItems) {
+    const entry = mapping.entries[item.name];
+    const dest = entry.destination;
+
+    if (dest === IGNORE_DESTINATION) {
+      ignoredFolders.push(item.name);
       continue;
     }
-    if (role === 'IGNORE') {
-      ignoredFolders.push(folder);
-      continue;
+
+    if (item.kind === 'folder') {
+      const srcDir = path.join(changePath, item.name);
+      const destDir = path.join(finalPath, dest, item.name);
+      await walkAndPlanFolder(srcDir, destDir, dest, '/' + item.name, items);
+    } else {
+      const srcFile = path.join(changePath, item.name);
+      const destFile = path.join(finalPath, dest, item.name);
+      const rel = `${dest}/${item.name}`;
+      await classifyFile(srcFile, destFile, dest, rel, items);
     }
-    const srcDir = path.join(changePath, folder);
-    const destDir = path.join(finalPath, role, folder);
-    await walkAndPlan({ changePath, finalPath, role, folder }, srcDir, destDir, items);
   }
 
   const toCreate = items.filter((i) => i.action === 'create').length;

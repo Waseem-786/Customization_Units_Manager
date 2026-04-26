@@ -239,9 +239,10 @@ export function CustomizationDetail() {
         <aside>
           <MappingPanel
             customizationName={detail.name}
-            detectedFolders={detail.detectedFolders}
+            detectedItems={detail.detectedItems}
             initial={detail.mapping}
             mappingExists={detail.mappingExists}
+            unmappedItems={detail.unmappedItems}
             onSaved={handleMappingSaved}
           />
         </aside>

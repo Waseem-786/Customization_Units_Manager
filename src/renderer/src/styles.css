@@ -776,7 +776,22 @@ body {
   font-size: var(--fs-small);
   font-weight: 500;
   color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
+.folder-name-cell {
+  min-width: 0;
+}
+.item-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}
+.item-new-badge { flex-shrink: 0; }
 
 /* Role segmented control */
 .role-toggle {
@@ -804,6 +819,94 @@ body {
 .role-btn.active.role-app_units { background: var(--role-app-bg); color: var(--role-app-fg); }
 .role-btn.active.role-db_units  { background: var(--role-db-bg);  color: var(--role-db-fg); }
 .role-btn.active.role-ignore    { background: var(--role-ign-bg); color: var(--role-ign-fg); }
+
+/* Item kind icon (folder vs file) inside mapping table */
+.item-kind {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--muted);
+}
+.mapping-row-unmapped td { background: var(--warn-soft); }
+.mapping-row-unmapped .folder-name { color: var(--warn); }
+
+/* Bucket management header */
+.bucket-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 12px;
+  padding: 6px 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+}
+.bucket-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--panel-3);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 4px 2px 10px;
+  font-size: var(--fs-tiny);
+  font-family: "JetBrains Mono", monospace;
+  color: var(--text);
+}
+.bucket-chip-x {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+}
+.bucket-chip-x:hover { background: var(--danger-soft); color: var(--danger); }
+.bucket-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.bucket-add input {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: var(--fs-tiny);
+  font-family: "JetBrains Mono", monospace;
+  width: 160px;
+}
+.bucket-add input:focus {
+  outline: 1px solid var(--gold);
+  outline-offset: 1px;
+}
+
+/* Per-item destination select */
+.dest-col-head { width: 1%; white-space: nowrap; }
+.dest-select {
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  font-size: var(--fs-tiny);
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  min-width: 130px;
+  max-width: 180px;
+}
+.dest-select:hover { border-color: var(--border-strong); }
+.dest-select:focus { outline: 1px solid var(--gold); outline-offset: 1px; }
+.dest-select option { background: var(--panel); color: var(--text); }
 
 /* ---------- Modals ---------- */
 .modal-backdrop {
