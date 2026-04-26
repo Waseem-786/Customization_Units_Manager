@@ -4,6 +4,17 @@ A desktop application for **application consultants** who receive customization 
 
 It turns a manual, error-prone copy-paste workflow into a structured tool with per-customization mapping, change tracking, hunk-by-hunk merging, and one-click deployment-script generation.
 
+## Download
+
+Pre-built Windows binaries are published on the [Releases page](https://github.com/Waseem-786/Customization_Units_Manager/releases/latest).
+
+| File | Use it when |
+| --- | --- |
+| `Customization-Units-Manager-Setup-1.0.0.exe` | You want a normal installer with desktop + start-menu shortcuts. |
+| `Customization-Units-Manager-1.0.0-Portable.exe` | You don't want to install — run from a USB stick or a network share. |
+
+The installer is **unsigned**, so Windows SmartScreen will show a "Publisher unknown" warning the first time. Click **More info → Run anyway**.
+
 ## The workflow it supports
 
 When a developer hands you a customization (e.g. `RSD_2025_0497_Customization`), it usually arrives as a bundle of folders — `INC`, `JS`, `SQL`, `SPC`, `DDL`, `UIXML`, `RADXML`, etc. — sometimes with loose files at the root. As a consultant, you typically:

@@ -1,0 +1,46 @@
+appId: com.waseem.customization-units-manager
+productName: Customization Units Manager
+copyright: Copyright © 2026 Waseem-786
+
+directories:
+  output: release
+  buildResources: build
+
+# Vite already bundles every runtime dependency into out/, so we only need
+# to ship the bundled output + package.json (electron reads `main` from it).
+files:
+  - "out/**"
+  - "package.json"
+
+# No native modules — skip the rebuild step.
+npmRebuild: false
+
+asar: true
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+  artifactName: "${productName}-${version}-${arch}-${ext}"
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Customization Units Manager
+  artifactName: "Customization-Units-Manager-Setup-${version}.${ext}"
+
+portable:
+  artifactName: "Customization-Units-Manager-${version}-Portable.${ext}"
+
+publish:
+  provider: github
+  owner: Waseem-786
+  repo: Customization_Units_Manager
+  releaseType: release

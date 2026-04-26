@@ -1,31 +1,44 @@
 {
   "name": "customization-units-manager",
-  "version": "0.1.0",
-  "description": "Desktop app to manage customization units across multiple changes (M1 foundation)",
+  "version": "1.0.0",
+  "description": "Desktop app for application consultants to manage customization units across multiple changes, with hunk-by-hunk merge and one-click deployment script generation.",
   "main": "out/main/index.js",
-  "author": "fsi-cbs1",
+  "author": {
+    "name": "Waseem-786",
+    "email": "fsi-cbs1@techlogix.com"
+  },
   "license": "MIT",
+  "homepage": "https://github.com/Waseem-786/Customization_Units_Manager",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Waseem-786/Customization_Units_Manager.git"
+  },
   "scripts": {
     "dev": "node scripts/run.cjs dev",
     "build": "node scripts/run.cjs build",
     "start": "node scripts/run.cjs preview",
-    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json"
-  },
-  "dependencies": {
-    "@types/diff": "^7.0.2",
-    "diff": "^9.0.0",
-    "monaco-editor": "^0.55.1",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.26.2"
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "prepackage": "npm run build",
+    "package": "electron-builder --dir",
+    "predist:win": "npm run build",
+    "dist:win": "electron-builder --win --x64",
+    "predist": "npm run build",
+    "dist": "electron-builder"
   },
   "devDependencies": {
+    "@types/diff": "^7.0.2",
     "@types/node": "^22.7.4",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.2",
+    "diff": "^9.0.0",
     "electron": "^32.1.2",
+    "electron-builder": "^26.8.1",
     "electron-vite": "^2.3.0",
+    "monaco-editor": "^0.55.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.2",
     "typescript": "^5.6.2",
     "vite": "^5.4.8"
   }
