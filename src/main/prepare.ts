@@ -11,6 +11,7 @@ import type {
   PrepareResult
 } from '../shared/types';
 import { loadMapping, mergeMapping } from './mapping';
+import { generateDeploymentScript } from './deploymentScript';
 
 async function dirExists(p: string): Promise<boolean> {
   try {
@@ -218,6 +219,13 @@ export async function applyPreparePlan(
   const keptCurrent = files.filter((f) => f.action === 'kept-current').length;
   const merged = files.filter((f) => f.action === 'merged').length;
 
+  let deploymentScript = null;
+  try {
+    deploymentScript = await generateDeploymentScript(plan.finalPath, plan.customization);
+  } catch (err) {
+    console.error('Failed to generate deployment script:', err);
+  }
+
   return {
     customization: plan.customization,
     change: plan.change,
@@ -230,6 +238,7 @@ export async function applyPreparePlan(
     merged,
     ignored: plan.ignoredFolders,
     unmapped: plan.unmappedFolders,
-    files
+    files,
+    deploymentScript
   };
 }

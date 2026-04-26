@@ -6,6 +6,7 @@ import { loadSettings, saveSettings } from './settings';
 import { listCustomizations, getCustomizationDetail, createNextChange } from './customizations';
 import { saveMapping as saveMappingToDisk } from './mapping';
 import { applyPreparePlan, planPrepareChange } from './prepare';
+import { generateDeploymentScript } from './deploymentScript';
 import type {
   AppSettings,
   ConflictResolutions,
@@ -91,6 +92,13 @@ function registerIpc(): void {
 
   ipcMain.handle('fs:readText', async (_evt, filePath: string) => {
     return fs.readFile(filePath, 'utf-8');
+  });
+
+  ipcMain.handle('deployment:regenerate', async (_evt, name: string) => {
+    const settings = await loadSettings();
+    if (!settings.finalRoot) throw new Error('FINAL root is not configured.');
+    const finalCustomizationPath = path.join(settings.finalRoot, name);
+    return generateDeploymentScript(finalCustomizationPath, name);
   });
 
   ipcMain.handle('shell:open', async (_evt, target: string) => {

@@ -58,6 +58,42 @@ export function PrepareResultDialog({ result, onClose, onOpenFinal }: Props) {
             </div>
           )}
 
+          {result.deploymentScript && (
+            <div
+              className="card"
+              style={{ marginTop: 14, padding: 12, display: 'flex', alignItems: 'center', gap: 10 }}
+            >
+              <I.File size={18} style={{ color: 'var(--gold)', flexShrink: 0 }} />
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: 'var(--fs-small)', fontWeight: 500 }}>
+                  Deployment script regenerated
+                </div>
+                <code
+                  style={{
+                    display: 'block',
+                    fontSize: 'var(--fs-tiny)',
+                    color: 'var(--muted)',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}
+                  title={result.deploymentScript.filePath}
+                >
+                  {result.deploymentScript.filePath} · {result.deploymentScript.fileCount} DB files
+                </code>
+              </div>
+              <button
+                className="btn btn-sm"
+                onClick={() =>
+                  result.deploymentScript &&
+                  window.api.openInExplorer(result.deploymentScript.filePath)
+                }
+              >
+                <I.FolderOpen size={12} /> Open
+              </button>
+            </div>
+          )}
+
           {result.files.length > 0 && (
             <details style={{ marginTop: 14 }}>
               <summary style={{ cursor: 'pointer', fontWeight: 500, fontSize: 'var(--fs-small)' }}>

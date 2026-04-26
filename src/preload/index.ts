@@ -20,6 +20,8 @@ const api: IpcApi = {
   applyPreparePlan: (plan: PreparePlan, resolutions: ConflictResolutions) =>
     ipcRenderer.invoke('prepare:apply', plan, resolutions),
   readFileText: (filePath: string) => ipcRenderer.invoke('fs:readText', filePath),
+  regenerateDeploymentScript: (name: string) =>
+    ipcRenderer.invoke('deployment:regenerate', name),
   openInExplorer: (target: string) => ipcRenderer.invoke('shell:open', target)
 };
 

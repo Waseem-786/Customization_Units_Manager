@@ -4,6 +4,7 @@ import type {
   ChangeDetail,
   ConflictResolutions,
   CustomizationDetail as Detail,
+  DeploymentScriptInfo,
   MappingConfig,
   PreparePlan,
   PrepareResult
@@ -25,6 +26,9 @@ export function CustomizationDetail() {
   const [preparingChange, setPreparingChange] = useState<string | null>(null);
   const [activePlan, setActivePlan] = useState<PreparePlan | null>(null);
   const [resolverOpen, setResolverOpen] = useState(false);
+  const [regeneratingScript, setRegeneratingScript] = useState(false);
+  const [scriptInfo, setScriptInfo] = useState<DeploymentScriptInfo | null>(null);
+  const [scriptMessage, setScriptMessage] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true); setError(null);
@@ -74,6 +78,24 @@ export function CustomizationDetail() {
     for (const item of activePlan.items) if (item.action === 'conflict')
       resolutions[item.destination] = { action: 'use-new' };
     applyPlan(activePlan, resolutions);
+  }
+
+  async function handleRegenerateScript() {
+    setRegeneratingScript(true);
+    setScriptMessage(null);
+    try {
+      const info = await window.api.regenerateDeploymentScript(name);
+      setScriptInfo(info);
+      setScriptMessage(
+        info
+          ? `Deployment script regenerated (${info.fileCount} DB files).`
+          : 'No DB_UNITS files found in FINAL — script not generated.'
+      );
+    } catch (e) {
+      setScriptMessage(e instanceof Error ? e.message : 'Failed to regenerate script');
+    } finally {
+      setRegeneratingScript(false);
+    }
   }
 
   if (loading) {
@@ -134,6 +156,20 @@ export function CustomizationDetail() {
           <button className="btn" onClick={() => window.api.openInExplorer(detail.rawPath)}>
             <I.FolderOpen /> Open in Explorer
           </button>
+          {detail.hasFinal && (
+            <button
+              className="btn"
+              onClick={handleRegenerateScript}
+              disabled={regeneratingScript}
+              title="Rebuild Deployment_Script.txt from the current DB_UNITS contents"
+            >
+              {regeneratingScript ? (
+                <><span className="spin"><I.Loader /></span> Regenerating…</>
+              ) : (
+                <><I.File /> Deployment script</>
+              )}
+            </button>
+          )}
           <button className="btn" onClick={refresh} title="Reload"><I.RefreshCw /></button>
           <button className="btn btn-primary" onClick={handleCreateChange} disabled={creating}>
             {creating ? <><span className="spin"><I.Loader /></span> Creating…</> : <><I.Plus /> New Change</>}
@@ -142,6 +178,26 @@ export function CustomizationDetail() {
       </div>
 
       {error && <div className="error">{error}</div>}
+      {scriptMessage && (
+        <div
+          className={scriptInfo ? 'success' : 'error'}
+          style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}
+        >
+          <I.CheckCircle size={13} />
+          <span>{scriptMessage}</span>
+          {scriptInfo && (
+            <>
+              <code style={{ fontSize: 'var(--fs-tiny)' }}>{scriptInfo.filePath}</code>
+              <button
+                className="btn btn-sm"
+                onClick={() => window.api.openInExplorer(scriptInfo.filePath)}
+              >
+                <I.FolderOpen size={12} /> Open
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {detail.hasUnstructuredLayout && (
         <div className="card warn" style={{ marginBottom: 12 }}>

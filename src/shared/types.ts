@@ -99,6 +99,13 @@ export interface PreparedFile {
   action: AppliedAction;
 }
 
+export interface DeploymentScriptInfo {
+  filePath: string;
+  spoolPath: string;
+  fileCount: number;
+  generatedAt: string;
+}
+
 export interface PrepareResult {
   customization: string;
   change: string;
@@ -112,6 +119,7 @@ export interface PrepareResult {
   ignored: string[];
   unmapped: string[];
   files: PreparedFile[];
+  deploymentScript: DeploymentScriptInfo | null;
 }
 
 export interface IpcApi {
@@ -125,6 +133,7 @@ export interface IpcApi {
   planPrepareChange: (name: string, changeName: string) => Promise<PreparePlan>;
   applyPreparePlan: (plan: PreparePlan, resolutions: ConflictResolutions) => Promise<PrepareResult>;
   readFileText: (filePath: string) => Promise<string>;
+  regenerateDeploymentScript: (name: string) => Promise<DeploymentScriptInfo | null>;
   openInExplorer: (path: string) => Promise<void>;
 }
 
