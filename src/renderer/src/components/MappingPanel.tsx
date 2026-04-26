@@ -25,8 +25,8 @@ export function MappingPanel({ customizationName, detectedFolders, initial, mapp
 
   useEffect(() => {
     setFolders(initial.folders);
-    setDirty(false);
-  }, [initial]);
+    setDirty(!mappingExists);
+  }, [initial, mappingExists]);
 
   function setRole(folder: string, role: FolderRole) {
     setFolders((prev) => ({ ...prev, [folder]: role }));
@@ -103,7 +103,13 @@ export function MappingPanel({ customizationName, detectedFolders, initial, mapp
 
       <div className="btn-row">
         <button className="primary" onClick={handleSave} disabled={saving || !dirty}>
-          {saving ? 'Saving…' : dirty ? 'Save mapping' : 'Saved'}
+          {saving
+            ? 'Saving…'
+            : !dirty
+              ? 'Saved'
+              : mappingExists
+                ? 'Save mapping'
+                : 'Save defaults to .units-manager.json'}
         </button>
       </div>
     </div>

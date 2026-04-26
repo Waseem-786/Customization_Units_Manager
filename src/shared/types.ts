@@ -52,11 +52,51 @@ export interface MappingConfig {
   folders: Record<string, FolderRole>;
 }
 
+export type PrepareItemAction = 'create' | 'unchanged' | 'conflict';
+
+export interface PreparePlanItem {
+  source: string;
+  destination: string;
+  relativePath: string;
+  role: Exclude<FolderRole, 'IGNORE'>;
+  action: PrepareItemAction;
+  isBinary: boolean;
+  sourceSize: number;
+  destSize: number | null;
+}
+
+export interface PreparePlan {
+  customization: string;
+  change: string;
+  finalPath: string;
+  items: PreparePlanItem[];
+  ignoredFolders: string[];
+  unmappedFolders: string[];
+  toCreate: number;
+  toUnchanged: number;
+  conflicts: number;
+}
+
+export type ConflictResolution =
+  | { action: 'use-new' }
+  | { action: 'keep-current' }
+  | { action: 'merged'; content: string };
+
+export type ConflictResolutions = Record<string, ConflictResolution>;
+
+export type AppliedAction =
+  | 'created'
+  | 'unchanged'
+  | 'overwritten'
+  | 'kept-current'
+  | 'merged';
+
 export interface PreparedFile {
   source: string;
   destination: string;
+  relativePath: string;
   role: Exclude<FolderRole, 'IGNORE'>;
-  action: 'created' | 'overwritten' | 'unchanged';
+  action: AppliedAction;
 }
 
 export interface PrepareResult {
@@ -67,6 +107,8 @@ export interface PrepareResult {
   created: number;
   overwritten: number;
   unchanged: number;
+  keptCurrent: number;
+  merged: number;
   ignored: string[];
   unmapped: string[];
   files: PreparedFile[];
@@ -80,7 +122,9 @@ export interface IpcApi {
   getCustomizationDetail: (name: string) => Promise<CustomizationDetail | null>;
   createNextChange: (name: string) => Promise<CreateChangeResult>;
   saveMapping: (name: string, mapping: MappingConfig) => Promise<MappingConfig>;
-  prepareChange: (name: string, changeName: string) => Promise<PrepareResult>;
+  planPrepareChange: (name: string, changeName: string) => Promise<PreparePlan>;
+  applyPreparePlan: (plan: PreparePlan, resolutions: ConflictResolutions) => Promise<PrepareResult>;
+  readFileText: (filePath: string) => Promise<string>;
   openInExplorer: (path: string) => Promise<void>;
 }
 

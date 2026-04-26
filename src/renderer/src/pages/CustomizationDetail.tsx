@@ -2,13 +2,17 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import type {
   ChangeDetail,
+  ConflictResolutions,
   CustomizationDetail as Detail,
   MappingConfig,
+  PreparePlan,
   PrepareResult
 } from '../../../shared/types';
 import { FileTree } from '../components/FileTree';
 import { MappingPanel } from '../components/MappingPanel';
 import { PrepareResultDialog } from '../components/PrepareResultDialog';
+import { PrepareModeDialog } from '../components/PrepareModeDialog';
+import { ConflictResolver } from '../components/ConflictResolver';
 
 export function CustomizationDetail() {
   const { name = '' } = useParams<{ name: string }>();
@@ -18,6 +22,8 @@ export function CustomizationDetail() {
   const [creating, setCreating] = useState(false);
   const [prepareResult, setPrepareResult] = useState<PrepareResult | null>(null);
   const [preparingChange, setPreparingChange] = useState<string | null>(null);
+  const [activePlan, setActivePlan] = useState<PreparePlan | null>(null);
+  const [resolverOpen, setResolverOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -58,14 +64,54 @@ export function CustomizationDetail() {
     setPreparingChange(changeName);
     setError(null);
     try {
-      const result = await window.api.prepareChange(name, changeName);
-      setPrepareResult(result);
-      await refresh();
+      const plan = await window.api.planPrepareChange(name, changeName);
+      setActivePlan(plan);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to prepare change');
+      setError(e instanceof Error ? e.message : 'Failed to plan change');
     } finally {
       setPreparingChange(null);
     }
+  }
+
+  async function applyPlan(plan: PreparePlan, resolutions: ConflictResolutions) {
+    setError(null);
+    try {
+      const result = await window.api.applyPreparePlan(plan, resolutions);
+      setPrepareResult(result);
+      setActivePlan(null);
+      setResolverOpen(false);
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to apply prepare plan');
+    }
+  }
+
+  function handleOverwriteAll() {
+    if (!activePlan) return;
+    const resolutions: ConflictResolutions = {};
+    for (const item of activePlan.items) {
+      if (item.action === 'conflict') {
+        resolutions[item.destination] = { action: 'use-new' };
+      }
+    }
+    applyPlan(activePlan, resolutions);
+  }
+
+  function handleCompare() {
+    setResolverOpen(true);
+  }
+
+  function handleResolverApply(resolutions: ConflictResolutions) {
+    if (!activePlan) return;
+    applyPlan(activePlan, resolutions);
+  }
+
+  function handleResolverCancel() {
+    setResolverOpen(false);
+  }
+
+  function handleModeCancel() {
+    setActivePlan(null);
   }
 
   if (loading) {
@@ -150,6 +196,23 @@ export function CustomizationDetail() {
           preparing={preparingChange === change.name}
         />
       ))}
+
+      {activePlan && !resolverOpen && (
+        <PrepareModeDialog
+          plan={activePlan}
+          onChooseOverwrite={handleOverwriteAll}
+          onChooseCompare={handleCompare}
+          onCancel={handleModeCancel}
+        />
+      )}
+
+      {activePlan && resolverOpen && (
+        <ConflictResolver
+          conflicts={activePlan.items.filter((i) => i.action === 'conflict')}
+          onApply={handleResolverApply}
+          onCancel={handleResolverCancel}
+        />
+      )}
 
       {prepareResult && detail.finalPath && (
         <PrepareResultDialog

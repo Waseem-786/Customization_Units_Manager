@@ -1,11 +1,17 @@
 import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { promises as fs } from 'node:fs';
 import { loadSettings, saveSettings } from './settings';
 import { listCustomizations, getCustomizationDetail, createNextChange } from './customizations';
 import { saveMapping as saveMappingToDisk } from './mapping';
-import { prepareChange } from './prepare';
-import type { AppSettings, MappingConfig } from '../shared/types';
+import { applyPreparePlan, planPrepareChange } from './prepare';
+import type {
+  AppSettings,
+  ConflictResolutions,
+  MappingConfig,
+  PreparePlan
+} from '../shared/types';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -71,9 +77,20 @@ function registerIpc(): void {
     return saveMappingToDisk(customRawPath, mapping);
   });
 
-  ipcMain.handle('prepare:change', async (_evt, name: string, changeName: string) => {
+  ipcMain.handle('prepare:plan', async (_evt, name: string, changeName: string) => {
     const settings = await loadSettings();
-    return prepareChange(settings, name, changeName);
+    return planPrepareChange(settings, name, changeName);
+  });
+
+  ipcMain.handle(
+    'prepare:apply',
+    async (_evt, plan: PreparePlan, resolutions: ConflictResolutions) => {
+      return applyPreparePlan(plan, resolutions);
+    }
+  );
+
+  ipcMain.handle('fs:readText', async (_evt, filePath: string) => {
+    return fs.readFile(filePath, 'utf-8');
   });
 
   ipcMain.handle('shell:open', async (_evt, target: string) => {

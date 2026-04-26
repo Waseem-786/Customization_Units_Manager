@@ -15,9 +15,11 @@ export function PrepareResultDialog({ result, onClose, onOpenFinal }: Props) {
           Final folder: <code>{result.finalPath}</code>
         </p>
 
-        <div className="result-grid">
+        <div className="result-grid" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
           <div><strong>{result.created}</strong> <span className="muted">created</span></div>
           <div><strong>{result.overwritten}</strong> <span className="muted">overwritten</span></div>
+          <div><strong>{result.merged}</strong> <span className="muted">merged</span></div>
+          <div><strong>{result.keptCurrent}</strong> <span className="muted">kept</span></div>
           <div><strong>{result.unchanged}</strong> <span className="muted">unchanged</span></div>
         </div>
 
