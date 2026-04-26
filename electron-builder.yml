@@ -26,6 +26,12 @@ win:
       arch:
         - x64
   artifactName: "${productName}-${version}-${arch}-${ext}"
+  # Skip embedding icon/version into the exe metadata.
+  # Doing so triggers a winCodeSign download whose archive contains macOS
+  # symlinks Windows refuses to extract without admin/Developer Mode.
+  # The app still runs identically; only the file's right-click "Properties"
+  # tab will show the default Electron name + icon.
+  signAndEditExecutable: false
 
 nsis:
   oneClick: false
