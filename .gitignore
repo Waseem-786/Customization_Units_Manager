@@ -8,3 +8,4 @@ release/
 .claude/
 .vscode/
 .idea/
+.playwright-mcp/
